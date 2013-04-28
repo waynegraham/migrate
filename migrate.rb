@@ -95,8 +95,36 @@ def migrate_docs
   end
 end
 
-migrate_docs
+def migrate_markings
+  counter = 1
+
+  $conn.exec("SELECT * FROM markings") do |results|
+    results.each do |row|
+      created_at =  row.values_at('created_at').first
+      updated_at = row.values_at('updated_at').first
+      # set to 4 if nil
+      user_id = row.values_at('user_id').first
+      prism_id = $doc_map[row.values_at('prism_id').first]
+      facet_id = row.values_at('facet_id').first
+
+      markings = row.values_at('word_array').first
+
+      markings.gsub(/\[|\]/, '').split(',').each do |mark|
+
+        $db.prepare("markings#{counter}", "INSERT INTO word_markings(index, created_at, updated_at, user_id, facet_id, prism_id) VALUES ($1, $2, $3, $4, $5, $6)")
+        $db.exec_prepared("markings#{counter}", [mark, created_at, updated_at, user_id, facet_id, prism_id])
+
+        counter += 1
+      end
+
+
+    end
+  end
+end
+
+#migrate_docs
 #migrate_facets
+migrate_markings
 
 #File.open(file_name, 'w') { |file| file.write(users_sql) }
 
